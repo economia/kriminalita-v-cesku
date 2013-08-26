@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Brněnská kriminalita 2011 a 2012</title>
+    <meta charset="utf-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="http://leafletjs.com/dist/leaflet.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="http://leafletjs.com/dist/leaflet.ie.css" /><![endif]-->
+
+    <style>
+        body, html {margin:0;}
+        #map {
+            width: 670px;
+            height: 550px;
+            float: left;
+            clear: left;
+            display:inline;
+        }
+
+        .info {
+            padding: 6px 8px;
+            font: 14px/16px Arial, Helvetica, sans-serif;
+            background: white;
+            background: rgba(255,255,255,0.8);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px;
+        }
+        .info h4 {
+            margin: 0 0 5px;
+            color: #777;
+        }
+
+        #combo {
+            padding: 6px 8px;
+            font: 14px/16px Arial, Helvetica, sans-serif;
+            float: left;
+        }
+        #rokSelektor {
+            float: left;
+            margin-top: 7px;
+            margin-left: 15px;
+        }
+
+        .legend {
+            text-align: left;
+            line-height: 16px;
+            color: #555;
+        }
+        .legend i {
+            width: 18px;
+            height: 16px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+<div id="combo">
+Vyberte typ trestné činnosti:
+<select id="comboA" onchange="mapUpdate(this.value)">
+    <option value="vloupani_byty">Vloupání do bytů</option>
+    <option value="loupeze">Loupeže</option>
+    <option value="nasilne">Násilné trestné činy</option>
+    <!-- <option value="vloupani">Vloupání (všechna)</option> -->
+    <option value="kradeze">Krádeže prosté</option>
+    <option value="znasilneni">Znásilnění</option>
+    <option value="drogy">Drogové delikty</option>
+</select>
+</div>
+<div id="rokSelektor">
+Rok
+<input type='radio' name='rok' value='2012' checked="checked" id="rok-2012" onchange="rokSelected(this.value)" /><label for="rok-2012">2012</label>
+<input type='radio' name='rok' value='2011' id="rok-2011" onchange="rokSelected(this.value)" /><label for="rok-2011">2011</label>
+</div>
+<div id="map"></div>
+
+<script src="js/leaflet.js"></script>
+
+<script type="text/javascript" src="js/krimi_brno.js"></script>
+<script type="text/javascript">
+
+    var yearIdent = "";
+    var zlocinId = "";
+
+
+    function mapUpdate(value){
+        zlocinId = value;
+        zlocin = zlocinId + yearIdent;
+        geojson.setStyle(style);
+        //geojson11.setStyle(style);
+        map.removeControl(legend);
+        legend.addTo(map);
+    };
+
+    function noCitizens(citizens) {
+        if (citizens == 0){
+            return "nezjištěný počet";
+        } else {
+            return citizens;
+        }
+    };
+
+    function isBurglary(crime) {
+        if(crime == "vloupani_byty" || crime == "vloupani_byty_1") {
+            return " bytů";
+        } else {
+            return " obyvatel";
+        }
+    }
+
+    function isBurglaryFlats(crime) {
+        if(crime == "vloupani_byty" || crime == "vloupani_byty_1") {
+            return "Sum_obydle";
+        } else {
+            return "Sum_obvykl";
+        }
+    }
+
+    function conjugate(number){
+        if (number < 1 || number >= 5) {
+            return number + ' případů';
+        } else if (number == 1) {
+            return number + ' případ';
+        } else {
+            return number + ' případy';
+        }
+    }
+    function rokSelected(rok) {
+        if(rok == '2012') {
+            yearIdent = "";
+            mapUpdate(zlocinId);
+        } else {
+            yearIdent = "_1";
+            mapUpdate(zlocinId);
+        }
+    }
+    var zlocin = zlocinId = "vloupani_byty";
+    //used Jenks breaks
+    var ratio = {
+        "vloupani_byty" : [0.000577159, 0.001031625, 0.001766862, 0.003468079, 0.005851981],
+        "loupeze"    : [0.000152854, 0.000470860, 0.000902142, 0.001591118, 0.004962780],
+        "nasilne"    : [0.001169147, 0.001500332, 0.002197946, 0.003535818, 0.011880593],
+        "vloupani"   : [0.004388096, 0.004930113, 0.005744498, 0.007774825, 0.012707722],
+        "kradeze"    : [0.008498670, 0.013085177, 0.016271364, 0.038010042, 0.127227612],
+        "znasilneni" : [0.00000000, 0.000034597, 0.000053813, 0.000091712, 0.000150388],
+        "drogy"      : [0.000053813, 0.000155688, 0.000247507, 0.000427991, 0.001203098],
+
+        //ratios pro 2011
+        "vloupani_byty_1" : [0.000577159, 0.001031625, 0.001766862, 0.003468079, 0.005851981],
+        "loupeze_1"    : [0.000152854, 0.000470860, 0.000902142, 0.001591118, 0.004962780],
+        "nasilne_1"    : [0.001169147, 0.001500332, 0.002197946, 0.003535818, 0.011880593],
+        "vloupani_1"   : [0.004388096, 0.004930113, 0.005744498, 0.007774825, 0.012707722],
+        "kradeze_1"    : [0.008498670, 0.013085177, 0.016271364, 0.038010042, 0.127227612],
+        "znasilneni_1" : [0.00000000, 0.000034597, 0.000053813, 0.000091712, 0.000150388],
+        "drogy_1"      : [0.000053813, 0.000155688, 0.000247507, 0.000427991, 0.001203098]
+    };
+    var map = L.map('map', {
+        minZoom: 11,
+        maxZoom: 14,
+        maxBounds: [[49.3617, 16.2509], [49.0340, 16.8251]]
+    }).setView([49.1824, 16.6122], 11);
+
+    var cloudmade = L.tileLayer('http://service.ihned.cz/tiles/urban/{z}/{x}/{y}.png', {
+        attribution: '<a href="http://creativecommons.org/licenses/by-nc-sa/3.0/cz/" target = "_blank">CC BY-NC-SA 3.0 CZ</a> IHNED.cz, map data &copy; 2013 OpenStreetMap contributors, data <a href="http://policie.cz", target = "_blank">PČR</a> a <a href="http://czso.cz", target = "_blank">ČSÚ</a>'
+    }).addTo(map);
+    var ortomapa = L.tileLayer('http://geoportal.cuzk.cz/WMTS_ORTOFOTO_900913/WMTService.aspx?service=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=orto&style=default&TileMatrixSet=googlemapscompatibleext2:epsg:3857&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png', {
+        attribution: 'Map data © cuzk.cz'
+        });
+
+    var zlociny_nazvy = {
+        "vloupani_byty": "Vloupání do bytů 2012",
+        "loupeze": "Loupeže 2012",
+        "nasilne": "Násilné trestné činy 2012",
+        "vloupani": "Vloupání 2012",
+        "kradeze": "Krádeže prosté 2012",
+        "znasilneni": "Znásilnění 2012",
+        "drogy": "Drogové delikty 2012",
+
+        "vloupani_byty_1": "Vloupání do bytů 2011",
+        "loupeze_1": "Loupeže 2011",
+        "nasilne_1": "Násilné trestné činy 2011",
+        "vloupani_1": "Vloupání 2011",
+        "kradeze_1": "Krádeže prosté 2011",
+        "znasilneni_1": "Znásilnění 2011",
+        "drogy_1": "Drogové delikty 2011",
+    };
+
+    var info = L.control();
+
+    info.onAdd = function (map) {
+        this._div = L.DomUtil.create('div', 'info');
+        this.update();
+        return this._div;
+    };
+
+    info.update = function (props) {
+        this._div.innerHTML = '<h4>' + zlociny_nazvy[zlocin] + '</h4>' +  (props ?
+                '<b>Oddělení ' + props.jmeno + '</b><br />' + conjugate(props[zlocin]) + ' na ' + noCitizens(props[isBurglaryFlats(zlocin)]) + isBurglary(zlocin)
+                : 'Najetím vyberte policejní okrsek.');
+    };
+
+    info.addTo(map);
+
+
+    L.control.layers({
+        "Obecná mapa": cloudmade,
+        "Ortofotomapa": ortomapa
+    }).addTo(map);
+
+
+    // map coloring
+    function getColor(d) {
+        var colors = [ '#FEF0D9', '#FDCC8A', '#FC8D59', '#E34A33', '#B30000', 'gray' ];
+        var scale = ratio[zlocin];
+        for(var i = 0; i < scale.length; ++i) {
+            if(scale[i] >= d) {
+                break;
+            }
+        }
+        return colors[i];
+    }
+
+    function style(feature) {
+        return {
+            weight: 1,
+            opacity: 1,
+            color: 'white',
+            fillOpacity: 0.7,
+            fillColor: getColor((feature.properties[zlocin]/feature.properties[isBurglaryFlats(zlocin)]))
+        };
+    }
+
+    function highlightFeature(e) {
+        var layer = e.target;
+
+        layer.setStyle({
+            weight: 1,
+            color: '#666',
+            fillOpacity: 0.6
+        });
+
+        if (!L.Browser.ie && !L.Browser.opera) {
+            layer.bringToFront();
+        }
+
+        info.update(layer.feature.properties);
+    }
+
+    var geojson;
+    function resetHighlight(e) {
+        geojson.resetStyle(e.target);
+        info.update();
+    }
+
+    function zoomToFeature(e) {
+        map.fitBounds(e.target.getBounds());
+    }
+
+    function onEachFeature(feature, layer) {
+        layer.on({
+            mouseover: highlightFeature,
+            mouseout: resetHighlight,
+            click: zoomToFeature
+        });
+    }
+
+    geojson = L.geoJson(crime, {
+        style: style,
+        onEachFeature: onEachFeature
+    }).addTo(map);
+
+
+    var legend = L.control({position: 'bottomright'});
+
+    function getLegendContent() {
+            var div = L.DomUtil.create('div', 'info legend'),
+                    grades = ratio[zlocin],
+                    labels = [],
+                    from, to;
+
+            for (var i = 0; i < grades.length; i++) {
+                from = grades[i];
+                to = grades[i + 1];
+
+                labels.push(
+                        '<i style="background:' + getColor(from) + '"></i> ' +
+                                Math.round(from*10000)/10 + (Math.round(to*10000)/10 ? ' - ' + Math.round(to*10000)/10 : ' +') + " činu na tis." + isBurglary(zlocin));
+            }
+
+            div.innerHTML = labels.join('<br>');
+            return div;
+       };
+
+    legend.onAdd = getLegendContent;
+    legend.addTo(map);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pražská kriminalita 2012</title>
+    <meta charset="utf-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="http://leafletjs.com/dist/leaflet.css" />
+    <!--[if lte IE 8]><link rel="stylesheet" href="http://leafletjs.com/dist/leaflet.ie.css" /><![endif]-->
+
+    <style>
+        body, html {margin:0;}
+        #map {
+            width: 670px;
+            height: 550px;
+            float: left;
+            clear: left;
+            display:inline;
+        }
+
+        .info {
+            padding: 6px 8px;
+            font: 14px/16px Arial, Helvetica, sans-serif;
+            background: white;
+            background: rgba(255,255,255,0.8);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px;
+        }
+        .info h4 {
+            margin: 0 0 5px;
+            color: #777;
+        }
+
+        #combo {
+            padding: 6px 8px;
+            font: 14px/16px Arial, Helvetica, sans-serif;
+            float: left;
+        }
+        #rokSelektor {
+            float: left;
+            margin-top: 7px;
+            margin-left: 15px;
+        }
+
+        .legend {
+            text-align: left;
+            line-height: 16px;
+            color: #555;
+        }
+        .legend i {
+            width: 18px;
+            height: 16px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+<div id="combo">
+Vyberte typ trestné činnosti:
+<select id="comboA" onchange="mapUpdate(this.value)">
+    <option value="loupeze">Loupeže</option>
+    <option value="nasilne">Násilné trestné činy</option>
+    <option value="vloupani">Vloupání</option>
+    <option value="kradeze">Krádeže prosté</option>
+    <option value="znasilneni">Znásilnění</option>
+    <option value="drogy">Drogové delikty</option>
+</select>
+</div>
+<div id="rokSelektor">
+Rok
+<input type='radio' name='rok' value='2012' checked="checked" id="rok-2012" onchange="rokSelected(this.value)" /><label for="rok-2012">2012</label>
+<input type='radio' name='rok' value='2011' id="rok-2011" onchange="rokSelected(this.value)" /><label for="rok-2011">2011</label>
+</div>
+<div id="map"></div>
+
+<script src="js/leaflet.js"></script>
+
+<script type="text/javascript" src="js/krimi.js"></script>
+<script type="text/javascript" src="js/krimi11.js"></script>
+<script type="text/javascript">
+
+    function mapUpdate(value){
+        zlocin = value;
+        geojson.setStyle(style);
+        geojson11.setStyle(style);
+        map.removeControl(legend);
+        legend.addTo(map);
+    };
+
+    function noCitizens(citizens) {
+        if (citizens == 0){
+            return "nezjištěný počet";
+        } else {
+            return citizens;
+        }
+    };
+
+    function conjugate(number){
+        if (number < 1 || number >= 5) {
+            return number + ' případů';
+        } else if (number == 1) {
+            return number + ' případ';
+        } else {
+            return number + ' případy';
+        }
+    }
+    function rokSelected(rok) {
+        if(rok == '2012') {
+            map.removeLayer(geojson11);
+            map.addLayer(geojson);
+        } else {
+            map.addLayer(geojson11);
+            map.removeLayer(geojson);
+        }
+    }
+    var zlocin = "loupeze";
+    //used Jenks breaks
+    var ratio = {
+        "loupeze"    : [0.0127140, 0.0383932, 0.0639370, 0.1531394, 0.3748829],
+        "nasilne"    : [0.1216122, 0.1988676, 0.3277778, 0.4585327, 1.7857143],
+        "vloupani"   : [0.4644968, 0.6834547, 1.2444444, 1.8918074, 3.2159265],
+        "kradeze"    : [2.7427862, 5.2277778, 13.1180223, 25.3571429, 38.7066542],
+        "znasilneni" : [0.0028869, 0.0101705, 0.0278118, 0.0749766, 0.3062787],
+        "drogy"      : [0.0302939, 0.0834725, 0.2349256, 0.6362059, 1.2746017]
+    };
+    var map = L.map('map', {
+        minZoom: 11,
+        maxZoom: 18,
+        maxBounds: [[50.239, 14.094], [49.896, 14.800]]
+    }).setView([50.0598, 14.465], 11);
+
+    var cloudmade = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '<a href="http://creativecommons.org/licenses/by-nc-sa/3.0/cz/" target = "_blank">CC BY-NC-SA 3.0 CZ</a> IHNED.cz, map data &copy; 2011 OpenStreetMap contributors, data <a href="http://policie.cz", target = "_blank">PČR</a> a <a href="http://czso.cz", target = "_blank">ČSÚ</a>'
+    }).addTo(map);
+    var ortomapa = L.tileLayer('http://geoportal.cuzk.cz/WMTS_ORTOFOTO_900913/WMTService.aspx?service=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=orto&style=default&TileMatrixSet=googlemapscompatibleext2:epsg:3857&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png', {
+        attribution: 'Map data © cuzk.cz'
+        });
+
+    var zlociny_nazvy = {
+        "loupeze": "Loupeže",
+        "nasilne": "Násilné trestné činy",
+        "vloupani": "Vloupání",
+        "kradeze": "Krádeže prosté",
+        "znasilneni": "Znásilnění",
+        "drogy": "Drogové delikty",
+    };
+
+    var info = L.control();
+
+    info.onAdd = function (map) {
+        this._div = L.DomUtil.create('div', 'info');
+        this.update();
+        return this._div;
+    };
+
+    info.update = function (props) {
+        this._div.innerHTML = '<h4>' + zlociny_nazvy[zlocin] + '</h4>' +  (props ?
+                '<b>' + props.nazev + '</b><br />' + conjugate(props[zlocin]) + ' na ' + noCitizens(props.Sum_obyv_c) + ' obyvatel'
+                : 'Najetím vyberte policejní okrsek.');
+    };
+
+    info.addTo(map);
+
+
+    L.control.layers({
+        "Obecná mapa": cloudmade,
+        "Ortofotomapa": ortomapa
+    }).addTo(map);
+
+
+    // map coloring
+    function getColor(d) {
+        var colors = [ '#FEF0D9', '#FDCC8A', '#FC8D59', '#E34A33', '#B30000', 'gray' ];
+        var scale = ratio[zlocin];
+        for(var i = 0; i < scale.length; ++i) {
+            if(scale[i] >= d) {
+                break;
+            }
+        }
+        return colors[i];
+    }
+
+    function style(feature) {
+        return {
+            weight: 1,
+            opacity: 1,
+            color: 'white',
+            fillOpacity: 0.7,
+            fillColor: getColor((feature.properties[zlocin]/feature.properties.Sum_obyv_c) * 100)
+        };
+    }
+
+    function highlightFeature(e) {
+        var layer = e.target;
+
+        layer.setStyle({
+            weight: 1,
+            color: '#666',
+            fillOpacity: 0.6
+        });
+
+        if (!L.Browser.ie && !L.Browser.opera) {
+            layer.bringToFront();
+        }
+
+        info.update(layer.feature.properties);
+    }
+
+    var geojson;
+    function resetHighlight(e) {
+        geojson.resetStyle(e.target);
+        info.update();
+    }
+
+    function zoomToFeature(e) {
+        map.fitBounds(e.target.getBounds());
+    }
+
+    function onEachFeature(feature, layer) {
+        layer.on({
+            mouseover: highlightFeature,
+            mouseout: resetHighlight,
+            click: zoomToFeature
+        });
+    }
+
+    geojson = L.geoJson(crime, {
+        style: style,
+        onEachFeature: onEachFeature
+    }).addTo(map);
+
+    geojson11 = L.geoJson(crime11, {
+        style: style,
+        onEachFeature: onEachFeature
+    });
+
+    var legend = L.control({position: 'bottomright'});
+
+    function getLegendContent() {
+            var div = L.DomUtil.create('div', 'info legend'),
+                    grades = ratio[zlocin],
+                    labels = [],
+                    from, to;
+
+            for (var i = 0; i < grades.length; i++) {
+                from = grades[i];
+                to = grades[i + 1];
+
+                labels.push(
+                        '<i style="background:' + getColor(from) + '"></i> ' +
+                                Math.round((from/100)*10000)/10 + (Math.round((to/100)*10000)/10 ? ' - ' + Math.round((to/100)*10000)/10 : ' +') + " činu na tis. obyv.");
+            }
+
+            div.innerHTML = labels.join('<br>');
+            return div;
+       };
+
+    legend.onAdd = getLegendContent;
+    legend.addTo(map);
+
+</script>
+</body>
+</html>
