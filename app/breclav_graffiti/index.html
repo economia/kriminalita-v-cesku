@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Graffiti v Břeclavi</title>
+	<meta charset="utf-8" />
+	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.css" />
+ <!--[if lte IE 8]>
+     <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.ie.css" />
+ <![endif]-->
+<style rel="stylesheet">
+	#map { 
+		height: 100px;
+		width: 640px;
+		margin-bottom: 5px
+	}
+	#text {
+		width: 640px;
+		color: #202020;
+		font-size: 14px;
+		font-family: Arial, Helvetica, sans-serif;
+	}
+body, html {margin:0;}
+
+#forward {
+outline: 0;
+cursor: pointer;
+position: absolute;
+z-index: 1;
+top: 315px;
+left: 587px;
+width: 53px;
+height: 54px;
+background: url("./right.png") no-repeat;
+}
+
+#back {
+outline: 0;
+cursor: pointer;
+position: absolute;
+z-index: 1;
+top: 315px;
+left: 0;
+width: 53px;
+height: 54px;
+background: url("./left.png") no-repeat;
+}
+
+#back:hover {
+float: left;
+background: url("./left_a.png") no-repeat;
+}
+
+#forward:hover {
+float: left;
+background: url("./right_a.png") no-repeat;
+}
+</style>
+</head>
+<body>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+<script src="./js/d3.v3.min.js" charset="utf-8"></script>
+<script src="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.js"></script>
+<div id="forward"></div>
+<div id="back"></div>
+
+<div id="map"></div>
+<div id="photo"></div>
+<div id="text"></div>
+
+<script type="text/javascript">
+var slide = 0
+
+var map = L.map('map', {
+        minZoom: 13,
+        maxZoom: 15,
+        maxBounds: [[48.7389, 16.9392], [48.7754, 16.7312]]
+    }).setView([48.7616, 16.8695], 13);
+
+L.tileLayer('http://ihned-mapy.s3-website-eu-west-1.amazonaws.com/desaturized/{z}/{x}/{y}.png', {
+    attribution: '<a href="http://creativecommons.org/licenses/by-nc-sa/3.0/cz/" target = "_blank">CC BY-NC-SA 3.0 CZ</a> IHNED.cz, map data &copy; 2013 OpenStreetMap contributors'
+}).addTo(map);
+
+$( "#forward" ).click(function() {
+	if (slide == 15){
+		slide = 15;
+	} else {
+		slide = slide + 1
+		draw(slide);
+	}
+});
+
+$( "#back" ).click(function() {
+  if (slide == 1){
+		slide = 1;
+	} else {
+		slide = slide - 1
+		draw(slide);
+	}
+});
+
+var marker = null;
+
+function draw(slide) {
+	d3.csv('./photos.csv')
+			.row(function(d) { 
+				return {
+					id: d.id, 
+					text: d.text,
+					lat: +d.lat,
+					lng: +d.lng,
+					img: '<img src="photos/' + d.img + '.jpg">'
+				}; })
+			.get(function(error, rows) { 
+				$( "#text" ).empty();
+				$( "#text" ).append( rows[slide]['text'] );
+				$( "#photo" ).empty();
+				$( "#photo" ).append( rows[slide]['img'] );
+
+				if (marker !== null) {
+					marker.setLatLng([rows[slide]['lat'], rows[slide]['lng']]);
+					map.setView([rows[slide]['lat'], rows[slide]['lng']], 13);
+				} else {
+					marker = L.marker([rows[slide]['lat'], rows[slide]['lng']]).addTo(map);
+					map.setView([rows[slide]['lat'], rows[slide]['lng']], 13);
+				}
+				console.log(slide)
+			});	
+}
+
+draw(slide);
+
+</script>
+</body>
+</html>
