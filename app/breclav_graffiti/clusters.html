@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <script src='../mapbox/mapbox.js'></script>
     <link href='../mapbox/mapbox.css' rel='stylesheet' />
     <!--[if lte IE 8]>
@@ -18,11 +19,33 @@
 <ul id='map-ui'></ul>
 <div id='map'></div>
 <script type='text/javascript'>
-   var mapa = L.mapbox.map('map', 'graffiti-breclav', {minZoom: 13, maxZoom: 15, maxBounds: [[48.6389, 16.9522], [48.7754, 16.5312]], clickable: false, zIndex: 1});
+   var mapa = L.mapbox.map('map', 'graffiti-breclav', {minZoom: 13, maxZoom: 15, maxBounds: [[48.6389, 16.9522], [48.8754, 16.5312]], clickable: false, zIndex: 1});
    mapa.addLayer(L.tileLayer('http://ihned-mapy.s3-website-eu-west-1.amazonaws.com/desaturized/{z}/{x}/{y}.png', {
     zIndex: 0,
     attribution: '<a href="http://creativecommons.org/licenses/by-nc-sa/3.0/cz/" target = "_blank">CC BY-NC-SA 3.0 CZ</a> IHNED.cz, map data &copy; 2013 OpenStreetMap contributors'}))
     mapa.setView([48.7562, 16.8715], 13);
+    var geoJson = [{
+    "type": "Feature",
+    "geometry": {
+        "type": "Point",
+        "coordinates": [16.89468, 48.75931]
+    },
+    "properties": {
+        "title": "Legal wall (legální zeď) - místo vyhrazené pro sprejování nedaleko ulice Na Zahradách.",
+        "icon": {
+            "iconUrl": "./spray_can.png",
+            "iconSize": [21, 50], 
+            "iconAnchor": [25, 25],
+            "popupAnchor": [0, -25]
+        }
+    }
+}];
+mapa.markerLayer.on('layeradd', function(e) {
+    var marker = e.layer,
+        feature = marker.feature;
+    marker.setIcon(L.icon(feature.properties.icon));
+});
+mapa.markerLayer.setGeoJSON(geoJson);
 </script>
 </body>
 </html>
